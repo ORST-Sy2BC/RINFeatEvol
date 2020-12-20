@@ -3,24 +3,39 @@ IMPORTS
 '''
 
 import datetime     # for organizing file output
-import Bio      # Bio for downloading PDBs, printing protein lengths in residues
+import Bio      # Bio for downloading PDBs, parsing genbank files, printing protein lengths in residues
 from Bio.PDB import PDBList
 from Bio.PDB import PDBParser
+from Bio import SeqIO
 import pandas as pd
 import pypdb
-
+import numpy as np
 import os
 
 '''
 FUNCTIONS LIST
 '''
 
+# Pull coding sequences from a genbank assembly file
+def getFeatures(gb_file: str) -> dict:
+    '''
+    Input: the path to a genbank file for a genome assembly 
+
+    Output: a dictionary containing all CDS feature protein id's as keys and the protein sequence as the value
+    '''
+    coding_seqs = {}
+    for seq_record in SeqIO.parse(gb_file, "genbank"):
+        for feature in seq_record.features:
+            if feature.type == "CDS":
+                coding_seqs[feature.qualifiers['protein_id'][0]] = feature.qualifiers['translation'][0] 
+    return coding_seqs
+
 # Query the RCSB PDB (using pypdb) for structures.
 def findStrucs(query: str) -> pd.DataFrame:
     '''
     Finds structures matching a RCSB PDB query, and returns the dataframe with their information.
     '''
-    search_dict = pypdb.Query(query)     # create a dictionary containing search information
+    search_dict = pypdb.Query(query, query_type="sequence")     # create a dictionary containing search information
     found = search_dict.search(search_dict)[:500]      # create a list of these PDBs by searching RCSB
     metadata = []           # create a list with the information and the metadata
 
@@ -76,7 +91,7 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 #    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
 #    - Careful: make sure this algorithm handles possible frameshifts!
 #        - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
-def partitionDSbyProtType(path: str) -> list():
+#def partitionDSbyProtType(path: str) -> list():
     '''
     Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by whatever structures are in the files.
     '''
@@ -90,7 +105,7 @@ def partitionDSbyProtType(path: str) -> list():
             # add the current protein to whichever has the greatest sequence homology (if > y%)
     # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
 
-    return # listname
+#    return # listname
 
 
 # Construct the basis matrix for the RIN's
@@ -98,11 +113,11 @@ def partitionDSbyProtType(path: str) -> list():
 #    - Number each residue, instead of giving residue names (these might change!)
 #    - Be sure to construct the basis sequence carefully using the above functions!!!
 #    - Potentially necessary: slice off first ~20 and last ~20 residues to normalize length of the protein before calculating RIN adjacency matrix for some network type. Might make this a parameter of the input function that slices off p % of the front and end of each structure.
-def makeRINcompBasisMat() -> np.array():
+#def makeRINcompBasisMat() -> np.array():
     
     
     
-    return 
+#    return 
 
 # Summarize the set of downloaded structures with summary statistics, plot.
 
