@@ -20,4 +20,4 @@ Evolution of residue interaction network features from single-mutation steps alo
 - Observe the evolution of a set of COVID proteins, including the spike protein, from structures deposited over the past few months
     - Look for the following things:
         - Proclivity to jump species based on mutation / sequence?
-        - Proclivity to become more infectious (mutation D614V?)
+        - Proclivity to become more infectious (mutation D614G?)
