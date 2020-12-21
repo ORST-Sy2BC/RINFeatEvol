@@ -36,6 +36,7 @@ def findStrucs(query: str) -> pd.DataFrame:
     Finds structures matching a RCSB PDB query, and returns the dataframe with their information.
     '''
     search_dict = pypdb.Query(query, query_type="sequence")     # create a dictionary containing search information
+    # NOTE: ONLY finds the first 500 for now, to limit download size!
     found = search_dict.search(search_dict)[:500]      # create a list of these PDBs by searching RCSB
     metadata = []           # create a list with the information and the metadata
 
@@ -91,7 +92,7 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 #    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
 #    - Careful: make sure this algorithm handles possible frameshifts!
 #        - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
-#def partitionDSbyProtType(path: str) -> list():
+def partitionDSbyProtType(path: str) -> list():
     '''
     Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by whatever structures are in the files.
     '''
@@ -105,7 +106,7 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
             # add the current protein to whichever has the greatest sequence homology (if > y%)
     # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
 
-#    return # listname
+    return # listname
 
 
 # Construct the basis matrix for the RIN's
