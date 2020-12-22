@@ -35,21 +35,30 @@ def findStrucs(query: str) -> pd.DataFrame:
     '''
     Finds structures matching a RCSB PDB query, and returns the dataframe with their information.
     '''
-    search_dict = pypdb.Query(query, query_type="sequence")     # create a dictionary containing search information
-    # NOTE: ONLY finds the first 500 for now, to limit download size!
-    found = search_dict.search(search_dict)[:500]      # create a list of these PDBs by searching RCSB
-    metadata = []           # create a list with the information and the metadata
+    try:
+        search_dict = pypdb.Query(query, query_type="sequence")    # create a dictionary containing search information
+        # NOTE: ONLY finds the first 500 for now, to limit download size!
+        found = search_dict.search(search_dict)[:500]      # create a list of these PDBs by searching RCSB
+        metadata = []           # create a list with the information and the metadata
 
-    for proteins in found:  # for items in # for the items in the list,
-        metadata.append(pypdb.describe_pdb(proteins))  # append the dictionary 
-        
-    return pd.DataFrame(metadata)   # convert, return a Pandas DF
+        for proteins in found:  # for items in # for the items in the list,
+            metadata.append(pypdb.describe_pdb(proteins))  # append the dictionary 
+        return pd.DataFrame(metadata)   # convert, return a Pandas DF
+    except:
+        # if no search results are found, return an empty df to be caught in downstream functions.
+        print("There were no search results found for the query: " + query)
+        return pd.DataFrame()
 
 # Sort structures by deposition date.
 def sortStrucsByDate(prots: pd.DataFrame) -> pd.DataFrame():
     '''
     Sorts a pandas.DataFrame containing an RCSB PDB query from pypdb by date, and returns the sorted DataFrame.
     '''
+
+    # if the prots dataframe is empty, no search results were found, simply return the empty df
+    if prots.empty:
+        return prots
+    
     date = [i['deposit_date'] for i in prots.rcsb_accession_info]      # list of deposit dates
     pdbid = [i['id'] for i in prots.entry]
     
@@ -60,6 +69,10 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
     '''
     Downloads a set of structures from the above query using the PDB_dl_dir.
     '''
+    # check is the prots df is empty, if it is exit the function
+    if prots.empty:
+        return
+
     now = datetime.datetime.now()
     def now_dir_ts():
         '''
@@ -92,7 +105,7 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 #    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
 #    - Careful: make sure this algorithm handles possible frameshifts!
 #        - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
-def partitionDSbyProtType(path: str, α=0.90: float) -> list():
+def partitionDSbyProtType(path: str, α: float) -> list(): # α = 0.90
     '''
     Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by whatever structures are in the files.
 
@@ -176,7 +189,7 @@ def partitionDSbyProtType(path: str, α=0.90: float) -> list():
 #    - Number each residue, instead of giving residue names (these might change!)
 #    - Be sure to construct the basis sequence carefully using the above functions!!!
 #    - Potentially necessary: slice off first ~20 and last ~20 residues to normalize length of the protein before calculating RIN adjacency matrix for some network type. Might make this a parameter of the input function that slices off p % of the front and end of each structure.
-def makeRINcompBasisMat(seqlist: list()) -> np.array():
+def makeRINcompBasisMat(seqlist: list()): # -> np.array():
     '''
     Takes in a list of presumably identical protein structure types, and constructs a base matrix to enable the sequential comparison of this set of structures. This matrix is of size (natoms x natoms) where the number of atoms is equal to the number in the trimmed, representative length of each protein in the set. Then the sequences are aligned and numbers assigned to the starting sequence number. Thus, a single basis matrix will be populated with RIN information for each identical version in a future function.
     
@@ -205,7 +218,7 @@ def makeRINcompBasisMat(seqlist: list()) -> np.array():
 
     return basis_mat
 
-def constructTrimmedRINmat(minorlist: list()) -> np.array():
+def constructTrimmedRINmat(minorlist: list()): -> np.array():
 
     # trim the sequence
     def trimSeq(seq: str, start: int, end: int) -> str:
@@ -238,7 +251,7 @@ def constructTrimmedRINmat(minorlist: list()) -> np.array():
 
     return trimmedRinMat
 
-def makeRINevolTensor(path: str) -> np.ndarray():
+def makeRINevolTensor(path: str): -> np.ndarray():
     rinEvolTensor = np.ndarray()
 
     # for all lists in the "major list",:
