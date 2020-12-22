@@ -12,6 +12,8 @@ import pypdb
 import numpy as np
 import os
 
+from Bio.SeqUtils import seq1
+
 '''
 FUNCTIONS LIST
 '''
@@ -50,7 +52,7 @@ def findStrucs(query: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 # Sort structures by deposition date.
-def sortStrucsByDate(prots: pd.DataFrame) -> pd.DataFrame():
+def sortStrucsByDate(prots: pd.DataFrame) -> pd.DataFrame:
     '''
     Sorts a pandas.DataFrame containing an RCSB PDB query from pypdb by date, and returns the sorted DataFrame.
     '''
@@ -101,11 +103,14 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 
     return 
 
+
+####################### ABOVE FUNCTIONS IMPLEMENTED! ##################################
+
 # Walk through the set of structures and obtain a set of lists of all unique proteins in the dataset. Can name them 1, 2, 3 for now.
 #    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
 #    - Careful: make sure this algorithm handles possible frameshifts!
 #        - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
-def partitionDSbyProtType(path: str, α: float) -> list(): # α = 0.90
+def partitionDSbyProtType(path: str, α: float) -> list: # α = 0.90
     '''
     Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by whatever structures are in the files.
 
@@ -126,40 +131,47 @@ def partitionDSbyProtType(path: str, α: float) -> list(): # α = 0.90
         structure_id = filename.replace(old=".pdb", new="")     # replace the file extension with nothing, this is the structure ID!
         return parser.get_structure(structure_id, filename)     # return the structure
 
-    def splitPDBfile(struc: Bio.Entity.Structure.Structure) -> list():
+    def splitPDBfile(struc: Bio.Entity.Structure.Structure) -> list:
         '''
-        Takes a single PDB file and splits the file into a list of structure files. Repeated (identical) structures only exist once.
+        Takes a single PDB file and splits the file into a list of structure files based on chain ID. 
+        
+        TODO: Repeated (identical) structures only exist once.
         '''
         structures = []     # create a list to hold the individual structures
         
         model = struc[0]    # select the first model (generally len(struc) = 1 for most, except for trajectories or NMR models)
         for chain in model: # for each chain in the structure (see the data structure hierarchy of a structure object!)
-            structures.append(chain)    # append each chain in the file to the structures object
+            structures.append(chain)    # append each chain in the file to the list of structure objects
             # NOTE: we will likely need to refine this. We seek to see multiple levels of interaction, including inter-chain and intra-chain, so doing this in combination with finding inter-domain RINs would be the most comprehensive view!
             # SUGGESTION: Define domains using sequence data, if the above method doesn't work, or if Bio methods won't work.
 
         return structures
 
-    def findStructSeqFromChain(chain: Bio.Entity.Structure.Structure) -> str :
+    def strucToSeq(chain: Bio.Entity.Structure.Structure) -> str:
         '''
         Parses a structure object and returns the sequence as a 1-letter AA code.
         '''
-        seq = []
-        for res in chain:
-            if (is_aa(res)):
-                seq.append(res.get_resname())
-            # a bit sloppy; currently gets the 3-letter AA code. 
-            # we might be able to get this data from the PDB accession metadata! I need to sift through there to find details, though.
-        
+        res = list(struc.get_residues())        # residue list from the structure
+        seq = ""        # sequence to return later
+
+        for r in res:   # for each residue,
+            seq += seq1(r.get_resname())    # append the 3-letter code from each residue name to the sequence string
         return seq
 
     def computeSeqHomology(chainA: Bio.Entity.Structure.Structure, chainB: Bio.Entity.Structure.Structure) -> float: 
         '''
         Computes the homology between two structures, returns as a float (b/w 0.0 and 1.0)
         '''
+        homol = 0.0     # default is zero
         # Existing functions likely work well for this, I just don't know any off the top of my head!
+
+        from Bio import pairwise2
+
+        #pairwise2.format_alignment()
+
+        # compute homology here ...
         
-        return
+        return homol
 
     # for each PDB file in the dataset,
     for pdb in path:       # use os module to get filenames???
@@ -170,9 +182,13 @@ def partitionDSbyProtType(path: str, α: float) -> list(): # α = 0.90
         
         seqs = []
         for chain in chains:
-            seqs.append(findStructSeqFromChain(chain))    # obtain the sequences of each protein in the structure file
-        
+            seqs.append(strucToSeq(chain))    # obtain the sequences of each protein in the structure file
+
         # compare homology here somewhere?
+        # DON'T do pairwise for the whole dataset, that'd be costly. Add one, then compare with the first sequence that was added (assumes the first sequence is representative of the rest of them)
+
+
+
 
         # if a new protein exists / there isn't one homologous to any of the current chains (perhaps a representative chain, or a random one), (always < α)
             # append a new list to the "partitioned" list to track the evolution of this new structure 
@@ -189,7 +205,7 @@ def partitionDSbyProtType(path: str, α: float) -> list(): # α = 0.90
 #    - Number each residue, instead of giving residue names (these might change!)
 #    - Be sure to construct the basis sequence carefully using the above functions!!!
 #    - Potentially necessary: slice off first ~20 and last ~20 residues to normalize length of the protein before calculating RIN adjacency matrix for some network type. Might make this a parameter of the input function that slices off p % of the front and end of each structure.
-def makeRINcompBasisMat(seqlist: list()): # -> np.array():
+def makeRINcompBasisMat(seqlist: list()) -> np.array:
     '''
     Takes in a list of presumably identical protein structure types, and constructs a base matrix to enable the sequential comparison of this set of structures. This matrix is of size (natoms x natoms) where the number of atoms is equal to the number in the trimmed, representative length of each protein in the set. Then the sequences are aligned and numbers assigned to the starting sequence number. Thus, a single basis matrix will be populated with RIN information for each identical version in a future function.
     
@@ -218,7 +234,7 @@ def makeRINcompBasisMat(seqlist: list()): # -> np.array():
 
     return basis_mat
 
-def constructTrimmedRINmat(minorlist: list()): -> np.array():
+def constructTrimmedRINmat(minorlist: list()) -> np.array:
 
     # trim the sequence
     def trimSeq(seq: str, start: int, end: int) -> str:
@@ -239,7 +255,7 @@ def constructTrimmedRINmat(minorlist: list()): -> np.array():
         return selec
 
     def makeRINmat(struc: Bio.PDB.Structure.Structure, start: int, end: int) -> np.ndarray():
-        rinMat = np.ndarray()
+        rinMat = np.ndarray
 
         # apply above functions, then...
         # apply functions from getcontacts (retrofit, or import from library?)
@@ -251,7 +267,7 @@ def constructTrimmedRINmat(minorlist: list()): -> np.array():
 
     return trimmedRinMat
 
-def makeRINevolTensor(path: str): -> np.ndarray():
+def makeRINevolTensor(path: str) -> np.ndarray:
     rinEvolTensor = np.ndarray()
 
     # for all lists in the "major list",:
