@@ -12,6 +12,8 @@ import pypdb
 import numpy as np
 import os
 
+from Bio.PDB.Polypeptide import PPBuilder
+
 from Bio.SeqUtils import seq1
 
 '''
@@ -165,9 +167,24 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 0.90
         homol = 0.0     # default is zero
         # Existing functions likely work well for this, I just don't know any off the top of my head!
 
+        seq1 = str()
+        seq2 = str()
+
+        ppb=PPBuilder()
+        for pp in ppb.build_peptides(chainA):
+            # get the sequence
+            seq1 = pp.get_sequence()
+        
+        for pp in ppb.build_peptides(chainB):
+            seq2 = pp.get_sequence()
+        
+        # do something with this? Extract the .score() from an alignment? This isn't homology tho
+        # https://biopython.org/docs/latest/api/Bio.Align.html
+
+
         from Bio import pairwise2
 
-        #pairwise2.format_alignment()
+        pairwise2.format_alignment()
 
         # compute homology here ...
         
