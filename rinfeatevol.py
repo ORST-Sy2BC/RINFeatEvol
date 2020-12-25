@@ -112,7 +112,7 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 #    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
 #    - Careful: make sure this algorithm handles possible frameshifts!
 #        - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
-def partitionDSbyProtType(path: str, α: float) -> list: # α = 0.90
+def partitionDSbyProtType(path: str, α=10.0: float) -> list: # α = 0.90
     '''
     Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by whatever structures are in the files.
 
@@ -218,7 +218,7 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 0.90
             if (partitioned.empty()):       # if nothing in the p list,
                 partitioned.append(list())  # create a new list
             for p in partitioned:
-                if (computeAlignScore(seqs[s], getFirstSeq(p)) > 10.0) :  # if the first item in the list is "highly" homologous with s,
+                if (computeAlignScore(seqs[s], getFirstSeq(p)) > α) :  # if the first item in the list is "highly" homologous with s,
                     p.append(strucs[s])    # add the current struc to that list
 
         # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
