@@ -112,7 +112,7 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 #    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
 #    - Careful: make sure this algorithm handles possible frameshifts!
 #        - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
-def partitionDSbyProtType(path: str, α=10.0: float) -> list: # α = 0.90
+def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
     '''
     Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by whatever structures are in the files.
 
@@ -123,17 +123,29 @@ def partitionDSbyProtType(path: str, α=10.0: float) -> list: # α = 0.90
     
     partitioned = []
 
-    def createStruct(filename: str) -> Bio.Entity.Structure.Structure:
+    def getPaths(root: str) -> list:
+        '''
+        Takes in a path to a directory and returns a list of paths to files containing the .pdb file extension found in sub-locations of the given directory
+        '''
+        paths = []
+        for root,dirs,files in os.walk(root): # walk through sub-directories and files in the root path
+            for file in files:
+                if file.endswith('.pdb'): # if the file in the sub-location contain the .pdb file extension, create the path from root and add to a paths list 
+                    paths.append(os.path.join(root,file))
+        return paths # return list containing all paths to the .pdb files
+
+
+    def createStruct(filename: str) -> Bio.PDB.Entity.Entity:
         '''
         Creates and returns a structure object from a PDB file, given as the filename/filepath (should work for both!).
         '''
         from Bio.PDB.PDBParser import PDBParser
         parser = PDBParser(PERMISSIVE=1)
 
-        structure_id = filename.replace(old=".pdb", new="")     # replace the file extension with nothing, this is the structure ID!
+        structure_id = filename.strip().split('/')[-1].replace('.pdb', '')     # replace the file extension with nothing, this is the structure ID!
         return parser.get_structure(structure_id, filename)     # return the structure
 
-    def splitPDBfile(struc: Bio.Entity.Structure.Structure) -> list:
+    def splitPDBfile(struc: Bio.PDB.Entity.Entity) -> list:
         '''
         Takes a single PDB file and splits the file into a list of structure files based on chain ID. 
         
@@ -149,35 +161,23 @@ def partitionDSbyProtType(path: str, α=10.0: float) -> list: # α = 0.90
 
         return structures
 
-    def strucToSeq(chain: Bio.Entity.Structure.Structure) -> str:
+    def strucToSeq(chain: Bio.PDB.Entity.Entity) -> str:
         '''
         Parses a structure object and returns the sequence as a 1-letter AA code.
         '''
-        res = list(struc.get_residues())        # residue list from the structure
+        res = list(chain.get_residues())        # residue list from the structure
         seq = ""        # sequence to return later
 
         for r in res:   # for each residue,
             seq += seq1(r.get_resname())    # append the 3-letter code from each residue name to the sequence string
         return seq
 
-    def computeAlignScore(chainA: Bio.Entity.Structure.Structure, chainB: Bio.Entity.Structure.Structure) -> float: 
+    def computeAlignScore(seqA: str, seqB: str) -> float: 
         '''
         Computes the homology between two structures, returns as a float (b/w 0.0 and 1.0)
         '''
         homol = 0.0     # default is zero
         # Existing functions likely work well for this, I just don't know any off the top of my head!
-
-        seq1 = str()
-        seq2 = str()
-
-        ppb=PPBuilder()
-        for pp in ppb.build_peptides(chainA):
-            # get the sequence
-            seq1 = pp.get_sequence()
-        
-        for pp in ppb.build_peptides(chainB):
-            seq2 = pp.get_sequence()
-        
         # do something with this? Extract the .score() from an alignment? This isn't homology tho
         # https://biopython.org/docs/latest/api/Bio.Align.html
 
@@ -189,18 +189,17 @@ def partitionDSbyProtType(path: str, α=10.0: float) -> list: # α = 0.90
         aligner.match_score = 2
         aligner.mismatch_score = -1
 
-        alignments = aligner.align(seq1, seq2)
+        alignments = aligner.align(seqA, seqB)
 
         #pairwise2.format_alignment()
         # compute homology here ... ?
-        
+    
         return sorted(alignments)[0].score
 
     def getFirstSeq(seqlist: list) -> Bio.Seq.Seq:
         return seqlist[0]
 
-    # for each PDB file in the dataset,
-    for pdb in path:       # use os module to get filenames???
+    for pdb in getPaths(path):       # use os module to get filenames???
         # files are already ordered by deposition date, so the list "partitioned" constructed will have a set of lists who all also order the components by deposition date
         
         s = createStruct(pdb)       # create the structure
@@ -214,11 +213,13 @@ def partitionDSbyProtType(path: str, α=10.0: float) -> list: # α = 0.90
         # compare homology here somewhere?
         # DON'T do pairwise for the whole dataset, that'd be costly. Add one, then compare with the first sequence that was added (assumes the first sequence is representative of the rest of them)
 
-        for s in list(range(len(seq))):     # for the number of seqs there are,
-            if (partitioned.empty()):       # if nothing in the p list,
+        for s in list(range(len(seqs))):     # for the number of seqs there are,
+            if not partitioned:       # if nothing in the p list,
                 partitioned.append(list())  # create a new list
+                partitioned[0].append(seqs[s]) # since the list is empty, populate with the first sequence.
+                continue # go to the next iteration in the loop, so the first seq isn't compared against itself.
             for p in partitioned:
-                if (computeAlignScore(seqs[s], getFirstSeq(p)) > α) :  # if the first item in the list is "highly" homologous with s,
+                if (computeAlignScore(seqs[s], getFirstSeq(p)) > α):  # if the first item in the list is "highly" homologous with s,
                     p.append(strucs[s])    # add the current struc to that list
 
         # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
@@ -240,11 +241,37 @@ def makeRINcompBasisMat(seqlist: list()) -> np.array:
     -   May have some irregularities especially towards the ends of the sequence. Then the ends may be trimmed a slight amount to enable comparison of the interior residues of the full set of proteins.
     '''
     
+    #check if all sequences in a list are of type 'Bio.SeqRecord.SeqRecord'
+    def checkSeqType(seqlist: list()) -> bool():
+        for seq in seqlist:
+            if type(seq) == Bio.SeqRecord.SeqRecord:
+                continue
+            else:
+                return False
+        return True
+
     # align the list of sequences
     def alignSeqs(seqlist: list()) -> list():
-        # align sequences
+
+        from Bio.Align import MultipleSeqAlignment
+        from Bio.SeqRecord import SeqRecord
+
+        #make sure the list is composed of Bio.SeqRecord.SeqRecord objects, then perform a multiple sequence alignment
+        #if not, convert to seqRecord and then perform alignment
+        seqReqList = []
+        if checkSeqType(seqlist) == False:
+            for seq in seqlist:
+                seqRecList.append(SeqRecord(seq))
+        else:
+            seqRecList = seqlist
+                
+        alignment = MultipleSeqAlignment(seqReqList)
         
-        return # aligned sequences
+        alignedSeq = []
+        for seqRecord in alignment:
+            alignedSeq.append(seqRecord.seq)
+
+        return alignedSeq #return sequence alignment
 
     # determine how many residues to trim by creating the start and end position variables as a tuple()
     def detResToTrim(seqlist: list()) -> tuple():
@@ -254,6 +281,7 @@ def makeRINcompBasisMat(seqlist: list()) -> np.array:
         return (start, end) # define the trimming limits
 
     # call the above functions to create a basis matrix
+        #may want to call trimming function first to equalize lengths across sequences before alignment. 
 
     basis_mat = np.array()
 
@@ -270,7 +298,7 @@ def constructTrimmedRINmat(minorlist: list()) -> np.array:
         return trimlist
     
     # apply trimSeqs() to a single protein structure
-    def trimStructure(struc: Bio.PDB.Structure.Structure, start: int, end:int) -> Bio.PDB.Structure.Structure:
+    def trimStructure(struc: Bio.PDB.Entity.Entity, start: int, end:int) -> Bio.PDB.Entity.Entity:
 
         selec = struc
         # from the start to the end positions,
@@ -279,7 +307,7 @@ def constructTrimmedRINmat(minorlist: list()) -> np.array:
 
         return selec
 
-    def makeRINmat(struc: Bio.PDB.Structure.Structure, start: int, end: int) -> np.ndarray():
+    def makeRINmat(struc: Bio.PDB.Entity.Entity, start: int, end: int) -> np.ndarray():
         rinMat = np.ndarray
 
         # apply above functions, then...
