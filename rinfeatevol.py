@@ -160,7 +160,7 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 0.90
             seq += seq1(r.get_resname())    # append the 3-letter code from each residue name to the sequence string
         return seq
 
-    def computeSeqHomology(chainA: Bio.Entity.Structure.Structure, chainB: Bio.Entity.Structure.Structure) -> float: 
+    def computeAlignScore(chainA: Bio.Entity.Structure.Structure, chainB: Bio.Entity.Structure.Structure) -> float: 
         '''
         Computes the homology between two structures, returns as a float (b/w 0.0 and 1.0)
         '''
@@ -181,14 +181,23 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 0.90
         # do something with this? Extract the .score() from an alignment? This isn't homology tho
         # https://biopython.org/docs/latest/api/Bio.Align.html
 
+        #from Bio import pairwise2
+        from Bio import Align
 
-        from Bio import pairwise2
+        aligner = Align.PairwiseAligner()
+        aligner.mode = 'global'
+        aligner.match_score = 2
+        aligner.mismatch_score = -1
 
-        pairwise2.format_alignment()
+        alignments = aligner.align(seq1, seq2)
 
-        # compute homology here ...
+        #pairwise2.format_alignment()
+        # compute homology here ... ?
         
-        return homol
+        return sorted(alignments)[0].score
+
+    def getFirstSeq(seqlist: list) -> Bio.Seq.Seq:
+        return seqlist[0]
 
     # for each PDB file in the dataset,
     for pdb in path:       # use os module to get filenames???
@@ -198,22 +207,21 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 0.90
         chains = splitPDBfile(s)    # split the PDB file into chains
         
         seqs = []
+        strucs = []
         for chain in chains:
             seqs.append(strucToSeq(chain))    # obtain the sequences of each protein in the structure file
 
         # compare homology here somewhere?
         # DON'T do pairwise for the whole dataset, that'd be costly. Add one, then compare with the first sequence that was added (assumes the first sequence is representative of the rest of them)
 
-
-
-
-        # if a new protein exists / there isn't one homologous to any of the current chains (perhaps a representative chain, or a random one), (always < α)
-            # append a new list to the "partitioned" list to track the evolution of this new structure 
-        # else,
-            # add the protein to the one with greatest homology
+        for s in list(range(len(seq))):     # for the number of seqs there are,
+            if (partitioned.empty()):       # if nothing in the p list,
+                partitioned.append(list())  # create a new list
+            for p in partitioned:
+                if (computeAlignScore(seqs[s], getFirstSeq(p)) > 10.0) :  # if the first item in the list is "highly" homologous with s,
+                    p.append(strucs[s])    # add the current struc to that list
 
         # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
-
     return partitioned
 
 
