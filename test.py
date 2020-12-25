@@ -17,5 +17,5 @@ id_seq = rfe.getFeatures('sars2.gb')
 #    rfe.dlSortedStrucs(sdf) 
 
 #### above functions seem to be working well, however may need more testing. ####
-rfe.partitionDSbyProtType('testPDBdirectory', 10.0)
+rfe.partitionDSbyProtType('testing/testPDBdirectory', 10.0)
 # %%
