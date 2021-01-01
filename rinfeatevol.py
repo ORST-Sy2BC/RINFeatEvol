@@ -197,7 +197,20 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
         return sorted(alignments)[0].score
 
     def getFirstSeq(seqlist: list) -> Bio.Seq.Seq:
+        '''
+        Returns the first sequence in a list of sequences
+        '''
         return seqlist[0]
+
+    def retSeqsFasta(seqlist: list, fname: str) -> str:
+        '''
+        Generates a FASTA formatted file from a list of protein sequences derived from a list of partioned structures
+        '''
+        with open(fname, "w") as f:
+            for i,seq in enumerate(seqlist):
+                f.write('>', i)
+                f.write(seq)
+        return fname
 
     for pdb in getPaths(path):       # use os module to get filenames???
         # files are already ordered by deposition date, so the list "partitioned" constructed will have a set of lists who all also order the components by deposition date
@@ -223,6 +236,7 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
                     p.append(strucs[s])    # add the current struc to that list
 
         # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
+        # return fasta files containing all sequences for each partioned protein so they can be used for multiple sequence alignment during RIN generation
     return partitioned
 
 
@@ -241,36 +255,30 @@ def makeRINcompBasisMat(seqlist: list()) -> np.array:
     -   May have some irregularities especially towards the ends of the sequence. Then the ends may be trimmed a slight amount to enable comparison of the interior residues of the full set of proteins.
     '''
     
-    #check if all sequences in a list are of type 'Bio.SeqRecord.SeqRecord'
-    def checkSeqType(seqlist: list()) -> bool():
-        for seq in seqlist:
-            if type(seq) == Bio.SeqRecord.SeqRecord:
-                continue
-            else:
-                return False
-        return True
-
     # align the list of sequences
-    def alignSeqs(seqlist: list()) -> list():
+    def alignSeqs(unalignedFastaPath: str(), alignedFastaName: str()) -> list:
+        '''
+        Performs a multiple sequence alignment of the protein sequences found within the input fasta file, outputting an aligned fasta file
 
+        This function requires the installation of the standalone ClustalOmega alignment software.
+        '''
+        from Bio.Align.Applications import ClustalOmegaCommandline
         from Bio.Align import MultipleSeqAlignment
         from Bio.SeqRecord import SeqRecord
 
-        #make sure the list is composed of Bio.SeqRecord.SeqRecord objects, then perform a multiple sequence alignment
-        #if not, convert to seqRecord and then perform alignment
-        seqReqList = []
-        if checkSeqType(seqlist) == False:
-            for seq in seqlist:
-                seqRecList.append(SeqRecord(seq))
-        else:
-            seqRecList = seqlist
-                
-        alignment = MultipleSeqAlignment(seqReqList)
-        
-        alignedSeq = []
-        for seqRecord in alignment:
-            alignedSeq.append(seqRecord.seq)
+        inputfile = unalignedFastaPath
+        outputfile = alignedFastaName
 
+        cOmegaCommand = ClustalOmegaCommandline(infile=inputfile, outfile=outputfile, verbose=True, auto=True)
+        cOmegaCommand()
+
+        alignedSeq=[]
+        with open(outputfile, 'r') as FastaFile:
+            for line in FastaFile:
+                if ">" in line:
+                    continue
+                else:
+                    alignedSeq.append(line)
         return alignedSeq #return sequence alignment
 
     # determine how many residues to trim by creating the start and end position variables as a tuple()
