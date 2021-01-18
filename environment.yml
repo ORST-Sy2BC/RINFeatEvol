@@ -1,19 +1,24 @@
 name: bio
 channels:
+  - bioconda
+  - conda-forge
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=main
-  - ca-certificates=2020.10.14=0
-  - certifi=2020.11.8=py39h06a4308_0
+  - argtable2=2.13=h14c3975_1001
+  - ca-certificates=2020.12.5=ha878542_0
+  - certifi=2020.12.5=py39hf3d152e_1
+  - clustalo=1.2.4=he1b5a44_3
   - ld_impl_linux-64=2.33.1=h53a641e_7
   - libedit=3.1.20191231=h14c3975_1
   - libffi=3.3=he6710b0_2
   - libgcc-ng=9.1.0=hdf63c60_0
   - libstdcxx-ng=9.1.0=hdf63c60_0
   - ncurses=6.2=he6710b0_1
-  - openssl=1.1.1h=h7b6447c_0
+  - openssl=1.1.1i=h27cfd23_0
   - pip=20.3=py39h06a4308_0
   - python=3.9.0=hdb3f193_2
+  - python_abi=3.9=1_cp39
   - readline=8.0=h7b6447c_0
   - setuptools=50.3.2=py39h06a4308_2
   - sqlite=3.33.0=h62c20be_0

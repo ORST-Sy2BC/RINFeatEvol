@@ -2,19 +2,24 @@
 IMPORTS
 '''
 
+# STANDARD UTILITIES
 import datetime     # for organizing file output
-import Bio      # Bio for downloading PDBs, parsing genbank files, printing protein lengths in residues
-from Bio.PDB import PDBList
-from Bio.PDB import PDBParser
-from Bio import SeqIO
 import pandas as pd
 import pypdb
 import numpy as np
 import os
 
+# BIO
+# Bio for downloading PDBs, parsing genbank files, printing protein lengths in residues
+import Bio      
+from Bio.PDB import PDBList
+from Bio.PDB import PDBParser
+from Bio import SeqIO
 from Bio.PDB.Polypeptide import PPBuilder
-
 from Bio.SeqUtils import seq1
+from Bio.PDB.PDBParser import PDBParser
+from Bio.PDB.StructureAlignment import StructureAlignment
+import Bio.PDB
 
 '''
 FUNCTIONS LIST
@@ -105,6 +110,69 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 
     return 
 
+# Get the sequence of a single chain object.
+def getChainSeq(chain: Bio.PDB.Structure.Structure) -> str:
+    '''
+    Returns the sequence of a protein chain, in the format of a Bio.PDB.Structure.Structure object.
+
+    ASSUMPTIONS:
+    -------------------
+    - The chain objects are disjoint (in sequence) from other chain objects.
+    - A structure object is not passed (may error-out!)
+    '''
+    ppb = PPBuilder()
+
+    try:    # errored out a few times, see note below
+        seq = (str(ppb.build_peptides(chain)[0].get_sequence()))
+    except:
+        seq = "X"   # in case the chain doesn't exist, supply a token that will be ~0.0 sequence identity for all sequences!
+    return seq
+
+# Determine the fractional sequence identity.
+def fracSeqIdentity(seq1: str, seq2: str) -> float:
+    '''
+    Computes the fractional sequence identity between two (non-aligned) sequences. It does this by dividing the score by the greater of the lengths of the two sequences.
+    '''
+    from Bio import pairwise2
+
+    complength = max(len(seq1), len(seq2))  # compute the max seq length, for normalization
+    alignment = pairwise2.align.globalxx(seq1, seq2)   # compute alignment score between the two sequences
+    score = alignment[0][2]     # extract the score
+    return score/complength     # normalize the alignment score to the larger of the two lengths
+
+# Return `True` if the two proteins are the "same", and `False` if not.
+def sameChain(chain1: Bio.PDB.Structure.Structure, chain2: Bio.PDB.Structure.Structure, thresh: float) -> bool:
+    '''
+    Returns `1` if the two objects passed are the same chain. Returns `0` if they are different chains.
+    '''
+    if (fracSeqIdentity(getChainSeq(chain1), getChainSeq(chain2)) > thresh): # if the two chains are above the threshold,
+        return True     # return True
+    else:               # else,
+        return False    # return False
+
+# Get a list of sequences from a protein structure.
+def getSeqList(structure: Bio.PDB.Structure.Structure) -> list:
+    '''
+    Extract sequences from a single structure object.
+    '''
+
+    seqs = []   # create a list to fill with structures
+
+    for pp in ppb.build_peptides(structure):    # iterate through the structures
+        items.append(str(pp.get_sequence().split("\n")[0])) # append seqs to the list
+
+    return items
+
+# Get a list of chains in a protein structure.
+def listChains(structure: Bio.PDB.Structure.Structure) -> list:
+    '''
+    Returns a list of chain objects by splitting the structure object.
+    '''
+    structures = []
+    for chain in structure.get_chains():
+        structures.append(chain)
+    
+    return structures
 
 ####################### ABOVE FUNCTIONS IMPLEMENTED! ##################################
 
@@ -238,7 +306,6 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
         # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
         # return fasta files containing all sequences for each partioned protein so they can be used for multiple sequence alignment during RIN generation
     return partitioned
-
 
 # Construct the basis matrix for the RIN's
 #    - Must be the size of (len(natoms) x len(natoms)) to account for all possible internal interactions!
