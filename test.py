@@ -24,7 +24,7 @@ rfe.partitionDSbyProtType('testing/testPDBdirectory', 10.0)
 
 parser = PDBParser()
 structure = parser.get_structure("6XEY", "PDB/6XEY.pdb")
-struclist = listChains(structure)
+struclist = rfe.listChains(structure)
 
 for chain in struclist:
     for chain2 in struclist:

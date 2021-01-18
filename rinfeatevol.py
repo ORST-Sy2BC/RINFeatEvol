@@ -128,18 +128,6 @@ def getChainSeq(chain: Bio.PDB.Structure.Structure) -> str:
         seq = "X"   # in case the chain doesn't exist, supply a token that will be ~0.0 sequence identity for all sequences!
     return seq
 
-# Determine the fractional sequence identity.
-def fracSeqIdentity(seq1: str, seq2: str) -> float:
-    '''
-    Computes the fractional sequence identity between two (non-aligned) sequences. It does this by dividing the score by the greater of the lengths of the two sequences.
-    '''
-    from Bio import pairwise2
-
-    complength = max(len(seq1), len(seq2))  # compute the max seq length, for normalization
-    alignment = pairwise2.align.globalxx(seq1, seq2)   # compute alignment score between the two sequences
-    score = alignment[0][2]     # extract the score
-    return score/complength     # normalize the alignment score to the larger of the two lengths
-
 # Return `True` if the two proteins are the "same", and `False` if not.
 def sameChain(chain1: Bio.PDB.Structure.Structure, chain2: Bio.PDB.Structure.Structure, thresh: float) -> bool:
     '''
@@ -202,7 +190,6 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
                     paths.append(os.path.join(root,file))
         return paths # return list containing all paths to the .pdb files
 
-
     def createStruct(filename: str) -> Bio.PDB.Entity.Entity:
         '''
         Creates and returns a structure object from a PDB file, given as the filename/filepath (should work for both!).
@@ -240,29 +227,16 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
             seq += seq1(r.get_resname())    # append the 3-letter code from each residue name to the sequence string
         return seq
 
-    def computeAlignScore(seqA: str, seqB: str) -> float: 
+    def fracSeqIdentity(seq1: str, seq2: str) -> float:
         '''
-        Computes the homology between two structures, returns as a float (b/w 0.0 and 1.0)
+        Computes the fractional sequence identity between two (non-aligned) sequences. It does this by dividing the score by the greater of the lengths of the two sequences.
         '''
-        homol = 0.0     # default is zero
-        # Existing functions likely work well for this, I just don't know any off the top of my head!
-        # do something with this? Extract the .score() from an alignment? This isn't homology tho
-        # https://biopython.org/docs/latest/api/Bio.Align.html
+        from Bio import pairwise2
 
-        #from Bio import pairwise2
-        from Bio import Align
-
-        aligner = Align.PairwiseAligner()
-        aligner.mode = 'global'
-        aligner.match_score = 2
-        aligner.mismatch_score = -1
-
-        alignments = aligner.align(seqA, seqB)
-
-        #pairwise2.format_alignment()
-        # compute homology here ... ?
-    
-        return sorted(alignments)[0].score
+        complength = max(len(seq1), len(seq2))  # compute the max seq length, for normalization
+        alignment = pairwise2.align.globalxx(seq1, seq2)   # compute alignment score between the two sequences
+        score = alignment[0][2]     # extract the score
+        return score/complength     # normalize the alignment score to the larger of the two lengths
 
     def getFirstSeq(seqlist: list) -> Bio.Seq.Seq:
         '''
