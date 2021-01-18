@@ -162,22 +162,26 @@ def listChains(structure: Bio.PDB.Structure.Structure) -> list:
     
     return structures
 
-####################### ABOVE FUNCTIONS IMPLEMENTED! ##################################
+##################################################################################
+##--------------------- ABOVE FUNCTIONS TESTED! --------------------------------##
+##################################################################################
 
-# Walk through the set of structures and obtain a set of lists of all unique proteins in the dataset. Can name them 1, 2, 3 for now.
-#    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
-#    - Careful: make sure this algorithm handles possible frameshifts!
-#        - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
 def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
     '''
-    Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by whatever structures are in the files.
+    Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by structure identity.
 
     ARGS:
         path    :   Path to a PDB file with proteins in it.
         α       :   Homology significance level; greater than that value, two proteins are the "same" for structure comparison and will be grouped together; less, they are different/distinct.
+    
+    IMPLEMENTATION PLAN:
+    Walk through the set of structures and obtain a set of lists of all unique proteins in the dataset. Can name them 1, 2, 3 for now.
+    - Hint: using BLAST, unique proteins should be >90% sequence homology with others in the set.
+    - Careful: make sure this algorithm handles possible frameshifts!
+    - start the comparison at the first residues, and as long as thresh residues coincide, the proteins are the same?
     '''
     
-    partitioned = []
+    partitioned = []    # create the master list of list of chain structure objects, to be returned later
 
     def getPaths(root: str) -> list:
         '''
@@ -254,46 +258,47 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
                 f.write(seq)
         return fname
 
-    for pdb in getPaths(path):       # use os module to get filenames???
+    for pdb in getPaths(path):
         # files are already ordered by deposition date, so the list "partitioned" constructed will have a set of lists who all also order the components by deposition date
         
         s = createStruct(pdb)       # create the structure
         chains = splitPDBfile(s)    # split the PDB file into chains
-        
-        seqs = []
-        strucs = []
-        for chain in chains:
-            seqs.append(strucToSeq(chain))    # obtain the sequences of each protein in the structure file
 
-        # compare homology here somewhere?
         # DON'T do pairwise for the whole dataset, that'd be costly. Add one, then compare with the first sequence that was added (assumes the first sequence is representative of the rest of them)
 
-        for s in list(range(len(seqs))):     # for the number of seqs there are,
-            if not partitioned:       # if nothing in the p list,
-                partitioned.append(list())  # create a new list
-                partitioned[0].append(seqs[s]) # since the list is empty, populate with the first sequence.
-                continue # go to the next iteration in the loop, so the first seq isn't compared against itself.
-            for p in partitioned:
-                if (computeAlignScore(seqs[s], getFirstSeq(p)) > α):  # if the first item in the list is "highly" homologous with s,
-                    p.append(strucs[s])    # add the current struc to that list
+        for chain in chains:        # for the number of seqs there are,
+            if not partitioned:     # if nothing in the p list,
+                partitioned.append(list())      # create a new list
+                partitioned[0].append(chain)    # populate with the first chain
+                continue                        # so the first seq isn't compared against itself
+            
+            # otherwise, there is already at least one structure in the partitioned "superlist", so continue.
+            for p in partitioned:   # for each base chain object,
+                if (sameChain(chain, getFirstSeq(p), 0.90)):    # if it fits in an existing list,
+                    p.append(chain)                             # add the current struc to that list
+                else:                                           # otherwise, 
+                    p.append([chain])                           # create a new list for the new type
 
-        # note: if not working due to frameshifts, try comparing it to the first 20 ++ 10 res / iter 
-        # return fasta files containing all sequences for each partioned protein so they can be used for multiple sequence alignment during RIN generation
     return partitioned
 
-# Construct the basis matrix for the RIN's
-#    - Must be the size of (len(natoms) x len(natoms)) to account for all possible internal interactions!
-#    - Number each residue, instead of giving residue names (these might change!)
-#    - Be sure to construct the basis sequence carefully using the above functions!!!
-#    - Potentially necessary: slice off first ~20 and last ~20 residues to normalize length of the protein before calculating RIN adjacency matrix for some network type. Might make this a parameter of the input function that slices off p % of the front and end of each structure.
+##################################################################################
+##--------------------- ABOVE FUNCTIONS IMPLEMENTED! ---------------------------##
+##################################################################################
+
 def makeRINcompBasisMat(seqlist: list()) -> np.array:
     '''
     Takes in a list of presumably identical protein structure types, and constructs a base matrix to enable the sequential comparison of this set of structures. This matrix is of size (natoms x natoms) where the number of atoms is equal to the number in the trimmed, representative length of each protein in the set. Then the sequences are aligned and numbers assigned to the starting sequence number. Thus, a single basis matrix will be populated with RIN information for each identical version in a future function.
     
     Output from this function is constructed by necessarily assuming that the proteins:
-    -   Have a similar sequence identity.
-    -   Have a similar length.
-    -   May have some irregularities especially towards the ends of the sequence. Then the ends may be trimmed a slight amount to enable comparison of the interior residues of the full set of proteins.
+    - Have a similar sequence identity.
+    - Have a similar length.
+    - May have some irregularities especially towards the ends of the sequence. Then the ends may be trimmed a slight amount to enable comparison of the interior residues of the full set of proteins.
+    
+    Construct the basis matrix for the RIN's:
+    - Must be the size of (len(natoms) x len(natoms)) to account for all possible internal interactions!
+    - Number each residue, instead of giving residue names (these might change!)
+    - Be sure to construct the basis sequence carefully using the above functions!!!
+    - Potentially necessary: slice off first ~20 and last ~20 residues to normalize length of the protein before calculating RIN adjacency matrix for some network type. Might make this a parameter of the input function that slices off p % of the front and end of each structure.
     '''
     
     # align the list of sequences
@@ -321,6 +326,8 @@ def makeRINcompBasisMat(seqlist: list()) -> np.array:
                 else:
                     alignedSeq.append(line)
         return alignedSeq #return sequence alignment
+
+    # obtain the structure map between structures using the StructureAlignment() function!
 
     # determine how many residues to trim by creating the start and end position variables as a tuple()
     def detResToTrim(seqlist: list()) -> tuple():
