@@ -4,7 +4,7 @@
 import rinfeatevol as rfe
 
 # get the coding sequences from the SARS-CoV-2
-id_seq = rfe.getFeatures('sars2.gb')
+#id_seq = rfe.getFeatures('sars2.gb')
 # %%
 
 # test case if query has zero results
@@ -17,7 +17,7 @@ id_seq = rfe.getFeatures('sars2.gb')
 #    rfe.dlSortedStrucs(sdf) 
 
 #### above functions seem to be working well, however may need more testing. ####
-rfe.partitionDSbyProtType('testing/testPDBdirectory', 10.0)
+rfe.partitionDSbyProtType('testing/testPDBdirectory')
 
 # %%
 # extract sequences from the two structures

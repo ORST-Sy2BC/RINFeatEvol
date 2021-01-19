@@ -110,34 +110,6 @@ def dlSortedStrucs(prots: pd.DataFrame) -> str:
 
     return 
 
-# Get the sequence of a single chain object.
-def getChainSeq(chain: Bio.PDB.Structure.Structure) -> str:
-    '''
-    Returns the sequence of a protein chain, in the format of a Bio.PDB.Structure.Structure object.
-
-    ASSUMPTIONS:
-    -------------------
-    - The chain objects are disjoint (in sequence) from other chain objects.
-    - A structure object is not passed (may error-out!)
-    '''
-    ppb = PPBuilder()
-
-    try:    # errored out a few times, see note below
-        seq = (str(ppb.build_peptides(chain)[0].get_sequence()))
-    except:
-        seq = "X"   # in case the chain doesn't exist, supply a token that will be ~0.0 sequence identity for all sequences!
-    return seq
-
-# Return `True` if the two proteins are the "same", and `False` if not.
-def sameChain(chain1: Bio.PDB.Structure.Structure, chain2: Bio.PDB.Structure.Structure, thresh: float) -> bool:
-    '''
-    Returns `1` if the two objects passed are the same chain. Returns `0` if they are different chains.
-    '''
-    if (fracSeqIdentity(getChainSeq(chain1), getChainSeq(chain2)) > thresh): # if the two chains are above the threshold,
-        return True     # return True
-    else:               # else,
-        return False    # return False
-
 # Get a list of sequences from a protein structure.
 def getSeqList(structure: Bio.PDB.Structure.Structure) -> list:
     '''
@@ -166,13 +138,13 @@ def listChains(structure: Bio.PDB.Structure.Structure) -> list:
 ##--------------------- ABOVE FUNCTIONS TESTED! --------------------------------##
 ##################################################################################
 
-def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
+def partitionDSbyProtType(path: str = ".", α: float = 0.90) -> list:
     '''
     Takes a downloaded dataset and returns a list of lists, where each inner-list contains protein structures and each outer-list is partitioned by structure identity.
 
     ARGS:
         path    :   Path to a PDB file with proteins in it.
-        α       :   Homology significance level; greater than that value, two proteins are the "same" for structure comparison and will be grouped together; less, they are different/distinct.
+        α=0.90  :   Critical sequence identity; greater than that value, two proteins are the "same" for structure comparison and will be grouped together; less, they are different/distinct.
     
     IMPLEMENTATION PLAN:
     Walk through the set of structures and obtain a set of lists of all unique proteins in the dataset. Can name them 1, 2, 3 for now.
@@ -242,6 +214,32 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
         score = alignment[0][2]     # extract the score
         return score/complength     # normalize the alignment score to the larger of the two lengths
 
+    def getChainSeq(chain: Bio.PDB.Structure.Structure) -> str:
+        '''
+        Returns the sequence of a protein chain, in the format of a Bio.PDB.Structure.Structure object.
+
+        ASSUMPTIONS:
+        -------------------
+        - The chain objects are disjoint (in sequence) from other chain objects.
+        - A structure object is not passed (may error-out!)
+        '''
+        ppb = PPBuilder()
+
+        try:    # errored out a few times, see note below
+            seq = (str(ppb.build_peptides(chain)[0].get_sequence()))
+        except:
+            seq = "X"   # in case the chain doesn't exist, supply a token that will be ~0.0 sequence identity for all sequences!
+        return seq
+
+    def sameChain(chain1: Bio.PDB.Structure.Structure, chain2: Bio.PDB.Structure.Structure, thresh: float) -> bool:
+        '''
+        Returns `1` if the two objects passed are the same chain. Returns `0` if they are different chains.
+        '''
+        if (fracSeqIdentity(getChainSeq(chain1), getChainSeq(chain2)) > thresh): # if the two chains are above the threshold,
+            return True     # return True
+        else:               # else,
+            return False    # return False
+
     def getFirstSeq(seqlist: list) -> Bio.Seq.Seq:
         '''
         Returns the first sequence in a list of sequences
@@ -258,26 +256,25 @@ def partitionDSbyProtType(path: str, α: float) -> list: # α = 10.0
                 f.write(seq)
         return fname
 
-    for pdb in getPaths(path):
+    for pdb in getPaths(path):      # for each .pdb file in the directory,
         # files are already ordered by deposition date, so the list "partitioned" constructed will have a set of lists who all also order the components by deposition date
         
-        s = createStruct(pdb)       # create the structure
+        s = createStruct(pdb)       # create the structure object
         chains = splitPDBfile(s)    # split the PDB file into chains
 
         # DON'T do pairwise for the whole dataset, that'd be costly. Add one, then compare with the first sequence that was added (assumes the first sequence is representative of the rest of them)
 
-        for chain in chains:        # for the number of seqs there are,
+        for chain in chains:        # for all chains,
             if not partitioned:     # if nothing in the p list,
-                partitioned.append(list())      # create a new list
-                partitioned[0].append(chain)    # populate with the first chain
+                partitioned.append([chain])      # create a new list, populate with the first chain
                 continue                        # so the first seq isn't compared against itself
             
             # otherwise, there is already at least one structure in the partitioned "superlist", so continue.
             for p in partitioned:   # for each base chain object,
-                if (sameChain(chain, getFirstSeq(p), 0.90)):    # if it fits in an existing list,
-                    p.append(chain)                             # add the current struc to that list
-                else:                                           # otherwise, 
-                    p.append([chain])                           # create a new list for the new type
+                if (sameChain(chain, p[0], 0.90)):  # if it fits in an existing list,
+                    p.append(chain)                 # add the current struc to that list
+                else:       # otherwise, 
+                    partitioned.append([chain])     # create a new list for the new type
 
     return partitioned
 
