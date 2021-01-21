@@ -240,12 +240,6 @@ def partitionDSbyProtType(path: str = ".", α: float = 0.90) -> list:
         else:               # else,
             return False    # return False
 
-    def getFirstSeq(seqlist: list) -> Bio.Seq.Seq:
-        '''
-        Returns the first sequence in a list of sequences
-        '''
-        return seqlist[0]
-
     def retSeqsFasta(seqlist: list, fname: str) -> str:
         '''
         Generates a FASTA formatted file from a list of protein sequences derived from a list of partioned structures
@@ -271,7 +265,7 @@ def partitionDSbyProtType(path: str = ".", α: float = 0.90) -> list:
             
             # otherwise, there is already at least one structure in the partitioned "superlist", so continue.
             for p in partitioned:   # for each base chain object,
-                if (sameChain(chain, p[0], 0.90)):  # if it fits in an existing list,
+                if (sameChain(chain, p[0], α)):  # if it fits in an existing list,
                     p.append(chain)                 # add the current struc to that list
                 else:       # otherwise, 
                     partitioned.append([chain])     # create a new list for the new type
@@ -281,6 +275,8 @@ def partitionDSbyProtType(path: str = ".", α: float = 0.90) -> list:
 ##################################################################################
 ##--------------------- ABOVE FUNCTIONS IMPLEMENTED! ---------------------------##
 ##################################################################################
+
+# At this point, the structures are partitioned by sequence into rough groups, that are essentially "uniformly" the same protein, in each sub-list in "partitioned". Then, they should have very similar structures, which can be directly compared to withdraw important structural information.
 
 def makeRINcompBasisMat(seqlist: list()) -> np.array:
     '''
@@ -324,7 +320,35 @@ def makeRINcompBasisMat(seqlist: list()) -> np.array:
                     alignedSeq.append(line)
         return alignedSeq #return sequence alignment
 
-    # obtain the structure map between structures using the StructureAlignment() function!
+    def writeStrucsToCWD(partitioned: list):
+        '''
+        Writes each of the structure objects to mimic the hierarchy laid out, but using folders in the CWD to store chain structures.
+
+        Allows interface to other programs that can't be integrated using Python functions, directly.
+        '''
+        # create a new folder, called "partitioned"
+        # for each sublist in partitioned,
+            # create a new folder, name it numerically (?)
+            # for each chain in the list,
+                # write the chain as a PDB file to the current folder
+        return
+
+    def alignSublistChainsToSentinel(partitioned: list) -> list:
+        '''
+        Aligns each sublist in a superlist of partitioned structures to the first structure in that list, by constructing a residue map between the sublist items and the sentinel (first structure placed in the list during partitioning).
+        '''
+        aligned = []
+
+        # obtain the structure map between structures using the StructureAlignment() function!
+
+        # for all sublists in partitioned:
+            # create a new list, to be appended to "aligned" after filling it
+            # for all chains in the sublist,
+                # map all residues in all the structures collected to the first "sentinel" structure in the sublist
+                # append the dict to "aligned" ??? 
+                # should we do more? some kind of comparison matrix? or save this for later steps with getcontacts?
+        
+        return aligned
 
     # determine how many residues to trim by creating the start and end position variables as a tuple()
     def detResToTrim(seqlist: list()) -> tuple():

@@ -30,3 +30,15 @@ for chain in struclist:
     for chain2 in struclist:
         if (sameChain(chain, chain2, 0.9)):
             print(rfe.fracSeqIdentity(rfe.getChainSeq(chain), rfe.getChainSeq(chain2)))
+
+# %%
+
+'''
+PAIRWISE STRUCTURAL ALIGNMENT
+- Align, and obtain the map to the first "sentinel" structure in the list.
+- Will be repeated for each structure in a sub-list (inside "partitioned").
+'''
+# Align the two structures, obtain the fasta file for the pairwise alignment.
+
+# Run 
+
